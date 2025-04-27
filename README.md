@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
@@ -83,3 +84,7 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+=======
+# Remaudio_backend
+Remaudio is a NestJS-based music streaming backend with secure JWT authentication, song upload, and playlist management. Future updates will add synchronized multi-device playback (Remaudio Multiplay) and Google authentication.
+>>>>>>> de11f032fd88f6832404daef9f27cf678b65f6b7
