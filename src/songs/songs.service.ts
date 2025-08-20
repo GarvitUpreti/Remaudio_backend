@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Song } from './entities/song.entity';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as mm from 'music-metadata';
 
 @Injectable()
 export class SongsService {
@@ -34,12 +35,17 @@ export class SongsService {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
+     // 🔥 Extract metadata (especially duration)
+    const metadata = await mm.parseFile(file.path);
+    const duration = metadata.format.duration; // in seconds (float)
+
     // Save to database
     const song = new Song();
     song.name = file.originalname;  // Remove extension
     song.artist = 'Unknown Artist';
     song.filePath = file.path;
     song.audioURL = this.generateURL(filenaming);
+    song.duration = this.formatDuration(duration)
 
     // Set default cover image (if needed)
     const defaultCoverPath = path.join(process.cwd(), 'upload/cover.jpg');
@@ -49,6 +55,11 @@ export class SongsService {
     return song;
   }
 
+  formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
 
   generateURL(fileName: string): string {
     const baseUrl = 'http://localhost:3000';

@@ -9,6 +9,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { MultiplayModule } from './multiplay/multiplay.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ConfigModule } from '@nestjs/config';
     PlaylistsModule,
     UserModule,
     AuthModule,
+    MultiplayModule,
   ],
   controllers: [AppController],
   providers: [AppService],

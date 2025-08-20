@@ -15,6 +15,7 @@ const execAsync = promisify(exec);
 export class SongsController {
   constructor(private readonly songsService: SongsService) {}
 
+@Public()
 @Post('upload')
 @UseInterceptors(FileInterceptor('audio', {
   storage: diskStorage({
@@ -92,6 +93,7 @@ private async convertToMp3(inputPath: string, outputPath: string): Promise<void>
     return this.songsService.update(+id, updateSongDto);
   }
 
+  @Public()
   @Delete(':id')
   removeById(@Param('id') id: string) {
     return this.songsService.removeById(+id);

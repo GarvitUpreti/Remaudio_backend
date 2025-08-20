@@ -29,6 +29,4 @@ export class UpdateUserDto {
   @IsArray()
   @IsNumber({}, { each: true })                                 
   playlistToRemove?: number[]; // Array of song IDs to be remove   
-
-
 }

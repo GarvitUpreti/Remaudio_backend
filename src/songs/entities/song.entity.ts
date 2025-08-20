@@ -28,6 +28,9 @@ export class Song {
   @Column()
   filePath: string; // Path to the stored file
 
+  @Column({nullable:true})
+  duration: string;
+
   @ManyToMany(() => Playlist, (playlist) => playlist.songs,{onDelete: 'CASCADE'})
   playlists: Playlist[];
   

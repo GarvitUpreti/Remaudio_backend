@@ -16,11 +16,18 @@ async function bootstrap() {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     next();
   });
-  app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // or specify the allowed origins
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204); // Respond to preflight
+  }
+
+  next();
+});
 
   // 2. Increase payload limits (essential for file uploads)
   app.use(json({ limit: '100mb' }));

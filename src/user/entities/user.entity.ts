@@ -15,6 +15,9 @@ export class User {
     
     @Column({ unique: true }) // ✅ Ensure unique emails
     email: string;
+
+    @Column({ default: false })
+    isEmailVerified: boolean;  // Field to track email verification status
     
     @Column({nullable : true})
     updatedAt : Date;
@@ -24,6 +27,15 @@ export class User {
 
     @CreateDateColumn()
     createdAt: Date;
+
+    @Column({ nullable: true })
+    googleId: string;
+
+    @Column({ default: false })
+    isGoogleUser: boolean;
+
+    @Column({ nullable: true })
+    profilePic: string = "D:\remaudio v2\remaudio\src\default_user.png";
     
     @OneToMany(() => Playlist, playlist => playlist.user)
     playlists: Playlist[];

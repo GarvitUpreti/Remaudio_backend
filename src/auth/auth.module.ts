@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './auth.guard';
 import { APP_GUARD } from '@nestjs/core';
+import { OAuth2Client } from 'google-auth-library';
 
 @Module({
   imports: [
@@ -28,7 +29,13 @@ import { APP_GUARD } from '@nestjs/core';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
-    }
+    },
+    {
+      provide: OAuth2Client,
+      useFactory: () => {
+        return new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      }
+    },
   ],
 })
 export class AuthModule { }

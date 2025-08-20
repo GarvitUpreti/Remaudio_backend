@@ -23,12 +23,12 @@ export async function validateEmailFlow(
   }
 
   // 3. Check real-life validity via Hunter.io
-  const response = await axios.get(
-    `https://api.hunter.io/v2/email-verifier?email=${email}&api_key=${HUNTER_API_KEY}`,
-  );
+  // const response = await axios.get(
+  //   `https://api.hunter.io/v2/email-verifier?email=${email}&api_key=${HUNTER_API_KEY}`,
+  // );
 
-  const data = response.data?.data;
-  if (!data || data.result === 'undeliverable') {
-    throw new UnauthorizedException('Email is invalid or undeliverable');
-  }
+  // const data = response.data?.data;
+  // if (!data || data.result === 'undeliverable') {
+  //   throw new UnauthorizedException('Email is invalid or undeliverable');
+  // }
 }
