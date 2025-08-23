@@ -92,6 +92,10 @@ export class SongsService {
     return this.songRepository.find({relations: ['playlists', 'user'] });
   }
 
+  findByUserID(Uid: number) {
+    return this.songRepository.find({ where: { user: { id: Uid } }, relations: ['playlists', 'user']  });
+  }
+
   findById(id: number) {
     const song = this.songRepository.findOne({ where: { id } ,relations: ['playlists', 'user']  });
     if (!song) { 

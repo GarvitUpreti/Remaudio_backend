@@ -32,6 +32,10 @@ export class PlaylistsService {
     });
   }
 
+  findByUserID(Uid: number) {
+    return this.playlistRepository.find({ where: { user: { id: Uid } }, relations: ['songs', 'user']  });
+  }
+
   findById(id: number) {
     const playlist = this.playlistRepository.findOne({ where: { id }, relations: ['songs', 'user'] });
     if (!playlist) { 

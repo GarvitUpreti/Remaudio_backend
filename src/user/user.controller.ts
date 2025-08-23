@@ -29,6 +29,7 @@ export class UserController {
     return this.userService.getUserPlaylists(id);
   }
 
+  @Public()
   @Get('id/:id')
   findById(@Param('id') id: number) {
     return this.userService.findById(+id);
@@ -53,6 +54,7 @@ export class UserController {
     // console.log(updateUserDto.playlistToAdd[0])
     return this.userService.update(+id, updateUserDto);
   }
+  
   @Public()
   @Delete(':id')
   remove(@Param('id') id: string) {
