@@ -82,6 +82,7 @@ export class SongsController {
     return this.songsService.findByName(name);
   }
 
+  @Public()
   @Patch(':id')
   updateById(@Param('id') id: string, @Body() updateSongDto: UpdateSongDto) {
     return this.songsService.update(+id, updateSongDto);
