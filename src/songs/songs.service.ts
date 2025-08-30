@@ -6,14 +6,17 @@ import { Song } from './entities/song.entity';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as mm from 'music-metadata';
+import { ConfigService } from '@nestjs/config';
+
 
 @Injectable()
 export class SongsService {
   constructor(
-    
+
     @InjectRepository(Song)
     private readonly songRepository: Repository<Song>,
-  ) {}
+    private readonly configService: ConfigService,   // ✅ inject here
+  ) { }
 
   async create(file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -26,8 +29,8 @@ export class SongsService {
     // Generate safe filename and paths
     const uploadDir = path.join(process.cwd(), 'uploads', 'songs');
 
-    const filenaming :string = this.filtername(file.filename);
-    const safeFileName =  filenaming;
+    const filenaming: string = this.filtername(file.filename);
+    const safeFileName = filenaming;
     const newFilePath = path.join(uploadDir, safeFileName);
 
     // Ensure directory exists
@@ -35,7 +38,7 @@ export class SongsService {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-     // 🔥 Extract metadata (especially duration)
+    // 🔥 Extract metadata (especially duration)
     const metadata = await mm.parseFile(file.path);
     const duration = metadata.format.duration; // in seconds (float)
 
@@ -48,8 +51,9 @@ export class SongsService {
     song.duration = this.formatDuration(duration)
 
     // Set default cover image (if needed)
-    const defaultCoverPath = path.join(process.cwd(), 'upload/cover.jpg');
-    song.coverImgURL = fs.existsSync(defaultCoverPath)? `http://localhost:3000/upload/cover.jpg`: null;
+    const serverUrl = this.configService.get<string>('SERVER_URL');
+    const defaultCoverPath = path.join(process.cwd(), 'uploads/cover.jpg');
+    song.coverImgURL = fs.existsSync(defaultCoverPath) ? `${serverUrl}/uploads/cover.jpg` : null;
 
     await this.songRepository.save(song);
     return song;
@@ -62,51 +66,52 @@ export class SongsService {
   }
 
   generateURL(fileName: string): string {
+    const serverUrl = this.configService.get<string>('SERVER_URL');
     const baseUrl = 'http://localhost:3000';
     // const safeFileName = encodeURIComponent(fileName.trim());
-    return `${baseUrl}/uploads/songs/${fileName}`;
+    return `${serverUrl}/uploads/songs/${fileName}`;
   }
 
   filtername(name: string): string {
     let result = '';  // Initialize an empty string to build the result
     for (let i = 0; i < name.length; i++) {
-        if (name[i] === ' ') {
-            result += '%20';  // Replace space with hyphen
-        } else {
-            result += name[i];  // Keep original character
-        }
+      if (name[i] === ' ') {
+        result += '%20';  // Replace space with hyphen
+      } else {
+        result += name[i];  // Keep original character
+      }
     }
     return result;  // Return the modified string
-}
+  }
 
-  renameToMp3(filePath: string): string { 
+  renameToMp3(filePath: string): string {
     const dir = path.dirname(filePath);
     const baseName = path.basename(filePath, path.extname(filePath));
     const newFilePath = path.join(dir, `${baseName}.mp3`);
-  
+
     fs.renameSync(filePath, newFilePath);
     return newFilePath;
   }
 
   findAll() {
-    return this.songRepository.find({relations: ['playlists', 'user'] });
+    return this.songRepository.find({ relations: ['playlists', 'user'] });
   }
 
   findByUserID(Uid: number) {
-    return this.songRepository.find({ where: { user: { id: Uid } }, relations: ['playlists', 'user']  });
+    return this.songRepository.find({ where: { user: { id: Uid } }, relations: ['playlists', 'user'] });
   }
 
   findById(id: number) {
-    const song = this.songRepository.findOne({ where: { id } ,relations: ['playlists', 'user']  });
-    if (!song) { 
+    const song = this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] });
+    if (!song) {
       throw new BadRequestException('Song not found');
     }
     return song;
   }
 
   findByName(name: string) {
-    const song = this.songRepository.findOne({ where: { name },relations: ['playlists', 'user']  });
-    if (!song) { 
+    const song = this.songRepository.findOne({ where: { name }, relations: ['playlists', 'user'] });
+    if (!song) {
       throw new BadRequestException('Song not found');
     }
     return song;
@@ -114,46 +119,70 @@ export class SongsService {
 
   async update(id: number, updateSongDto: UpdateSongDto) {
     // 1. Find the song (with await)
-    const song = await this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] }, );
-    
+    const song = await this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] },);
+
     if (!song) {
       throw new NotFoundException(`Song with ID ${id} not found`);
     }
-  
+
     // 2. Update only provided fields
     if (updateSongDto.name !== undefined) {
       song.name = updateSongDto.name;
     }
-  
+
     if (updateSongDto.artist !== undefined) {
       song.artist = updateSongDto.artist;
     }
-  
+
     const currentTime = new Date();
-    song.updatedAt = currentTime 
+    song.updatedAt = currentTime
 
     // 3. Save changes to database
     return await this.songRepository.save(song);
   }
 
   async removeById(id: number) {
-    const song = await this.songRepository.findOne({ where: { id }});
+    const song = await this.songRepository.findOne({ where: { id } });
 
     if (!song) {
       throw new Error('Song not found');
     }
 
-    if (song.audioURL) {
-      const filePath = path.join(__dirname, '..', 'uploads', path.basename(song.audioURL));
+    // Delete the audio file if it exists
+    if (song.filePath) {
+      // Convert the stored path to absolute path from project root
+      const absoluteFilePath = path.resolve(song.filePath);
+
       try {
-        if (fs.existsSync(filePath)) {
-          await fs.promises.unlink(filePath);
+        if (fs.existsSync(absoluteFilePath)) {
+          await fs.promises.unlink(absoluteFilePath);
+          console.log(`Successfully deleted audio file: ${absoluteFilePath}`);
+        } else {
+          console.warn(`Audio file not found: ${absoluteFilePath}`);
         }
       } catch (err) {
-        console.error(`Error deleting file: ${filePath}`, err);
+        console.error(`Error deleting audio file: ${absoluteFilePath}`, err);
+        // Don't throw here - we still want to delete the database record
+      }
+    } else if (song.audioURL) {
+      // Fallback: construct path from audioURL if filePath is not available
+      const filename = path.basename(song.audioURL);
+      const filePath = path.join('uploads', 'songs', filename);
+      const absoluteFilePath = path.resolve(filePath);
+
+      try {
+        if (fs.existsSync(absoluteFilePath)) {
+          await fs.promises.unlink(absoluteFilePath);
+          console.log(`Successfully deleted audio file: ${absoluteFilePath}`);
+        } else {
+          console.warn(`Audio file not found: ${absoluteFilePath}`);
+        }
+      } catch (err) {
+        console.error(`Error deleting audio file: ${absoluteFilePath}`, err);
       }
     }
 
+    // Remove the song from database
     await this.songRepository.remove(song);
   }
 }

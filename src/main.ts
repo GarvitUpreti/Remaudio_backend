@@ -42,7 +42,7 @@ async function bootstrap() {
     prefix: '/uploads',
   });
 
-  await app.listen(3000);
+  await app.listen(3000, '0.0.0.0');
   console.log(`🚀 Server running on port 3000`);
   console.log(`🔌 WebSocket server also running on port 3000`);
 }
