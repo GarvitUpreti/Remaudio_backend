@@ -21,9 +21,9 @@ export class AuthController {
     const result = await this.authService.signIn(email, password);
 
     // Return the access token and refresh token
-    console.log(result.access_token)
+    console.log('Access token generated:', !!result.access_token);
+    console.log('Refresh token generated:', !!result.refresh_token);
     
-    console.log(result.refresh_token)
     return {
         access_token: result.access_token,
         refresh_token: result.refresh_token
@@ -34,21 +34,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('signup')
   async signup(@Body() signupauthdto: signupAuthDto) {
-
     // Call the AuthService to handle signup
     const result = await this.authService.signUp(signupauthdto);
 
-    // Return the access token and refresh token
-    console.log(result.accessToken)
-    
-    console.log(result.refreshToken)
+    // ✅ Fixed field names to match frontend expectations
     return {
-        access_token: result.accessToken,
-        refresh_token: result.refreshToken
+        access_token: result.access_token,  // ✅ Changed from accessToken
+        refresh_token: result.refresh_token // ✅ Changed from refreshToken
     };
   }
-
-  
 
   @Public()
   @Post('refresh')
@@ -66,12 +60,24 @@ export class AuthController {
   @Public()
   @Post('google/login')
   async handleGoogle(@Body() dto: GoogleAuthDto) {
-    return this.authService.handleGoogle(dto);
+    const result = await this.authService.handleGoogle(dto);
+    
+    // ✅ Fixed field names to match frontend expectations
+    return {
+        access_token: result.access_token,  // ✅ Changed from accessToken
+        refresh_token: result.refresh_token // ✅ Changed from refreshToken
+    };
   }
 
   @Public()
   @Post('google/signup')
   async completeSignup(@Body() dto: GoogleCompleteSignupDto) {
-    return this.authService.completeGoogleSignup(dto);
+    const result = await this.authService.completeGoogleSignup(dto);
+    
+    // ✅ Fixed field names to match frontend expectations
+    return {
+        access_token: result.access_token,  // ✅ Changed from accessToken
+        refresh_token: result.refresh_token // ✅ Changed from refreshToken
+    };
   }
 }
