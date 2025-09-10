@@ -7,20 +7,20 @@ export class User {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({nullable : true})
+    @Column({ nullable: true })
     refreshToken: string
-    
+
     @Column()
     name: string;
-    
+
     @Column({ unique: true }) // ✅ Ensure unique emails
     email: string;
 
     @Column({ default: false })
     isEmailVerified: boolean;  // Field to track email verification status
-    
-    @Column({nullable : true})
-    updatedAt : Date;
+
+    @Column({ nullable: true })
+    updatedAt: Date;
 
     @Column()
     password: string;
@@ -36,10 +36,16 @@ export class User {
 
     @Column({ nullable: true })
     profilePic: string = "D:\remaudio v2\remaudio\src\default_user.png";
-    
-    @OneToMany(() => Playlist, playlist => playlist.user)
+
+    @OneToMany(() => Playlist, playlist => playlist.user,{
+        cascade: ['remove'], // Add cascade remove
+        onDelete: 'CASCADE'  // Add onDelete CASCADE
+    })
     playlists: Playlist[];
-    
-    @OneToMany(() => Song, song => song.user)
+
+    @OneToMany(() => Song, song => song.user, {
+        cascade: ['remove'], // Add cascade remove
+        onDelete: 'CASCADE'  // Add onDelete CASCADE
+    })
     songs: Song[];
 }

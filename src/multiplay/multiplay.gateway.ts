@@ -13,7 +13,8 @@ import { MultiplayService } from './multiplay.service';
 
 @WebSocketGateway({ 
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000", "http://192.168.1.6:5173"], // ✅ Add your IP
+    origin: ['http://localhost:5173', // Development
+      process.env.FRONTEND_URL], // ✅ Add your IP
     methods: ["GET", "POST"],
     credentials: true,
   },

@@ -1,15 +1,8 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { SongsService } from './songs.service';
-// import { CreateSongDto } from './dto/create-song.dto';
 import { UpdateSongDto } from './dto/update-song.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import * as path from 'path';
-import * as fs from 'fs';
-import { promisify } from 'util';
-import { exec } from 'child_process';
 import { Public } from 'src/auth/public.decorator';
-const execAsync = promisify(exec);
 
 @Controller('songs')
 export class SongsController {
@@ -18,16 +11,9 @@ export class SongsController {
   @Public()
   @Post('upload')
   @UseInterceptors(FileInterceptor('audio', {
-    storage: diskStorage({
-      destination: './uploads/songs',
-      filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${file.originalname}`;
-        cb(null, uniqueName);
-      },
-    }),
+    // ❌ Remove diskStorage - use memory storage for Cloudinary
     limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
     fileFilter: (req, file, cb) => {
-
       const allowedPatterns = [
         /^audio\/.*/,  // Any audio type
         /^video\/.*/   // Any video type (may contain audio)
@@ -54,11 +40,9 @@ export class SongsController {
   }))
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
-    console.log(file);
-    console.log(file.path);
+    console.log('Uploading file:', file.originalname);
     return this.songsService.create(file);
   }
-
 
   @Get('user/:Uid')
   @Public()

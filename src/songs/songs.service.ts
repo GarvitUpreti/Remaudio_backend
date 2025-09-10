@@ -3,60 +3,55 @@ import { UpdateSongDto } from './dto/update-song.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Song } from './entities/song.entity';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as mm from 'music-metadata';
 import { ConfigService } from '@nestjs/config';
-
+import { CloudinaryService } from '../cloudinary/cloudinary.service'; // ✅ Import Cloudinary service
 
 @Injectable()
 export class SongsService {
   constructor(
-
     @InjectRepository(Song)
     private readonly songRepository: Repository<Song>,
-    private readonly configService: ConfigService,   // ✅ inject here
+    private readonly configService: ConfigService,
+    private readonly cloudinaryService: CloudinaryService, // ✅ Inject Cloudinary service
   ) { }
 
   async create(file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file uploaded');
 
-    // Validate MIME type (optional)
-    if (!file.mimetype.match(/audio\/mpeg|mp3/)) {
-      throw new BadRequestException('Only MP3 files are allowed');
+    console.log('Starting Cloudinary upload for:', file.originalname);
+    
+    try {
+      // ✅ Upload to Cloudinary
+      const cloudinaryResult = await this.cloudinaryService.uploadAudio(file);
+      console.log('Cloudinary upload successful:', cloudinaryResult.secure_url);
+
+      // ✅ Save to database with Cloudinary data
+      const song = new Song();
+      song.name = this.removeFileExtension(file.originalname);
+      song.artist = 'Unknown Artist';
+      song.audioURL = cloudinaryResult.secure_url; // ✅ Cloudinary URL
+      song.cloudinary_public_id = cloudinaryResult.public_id; // ✅ For deletion
+      song.duration = this.formatDuration(cloudinaryResult.duration || 0);
+      
+      // ❌ Remove filePath - we don't store local files anymore
+      // song.filePath = file.path;
+
+      // Set default cover image (optional)
+      song.coverImgURL = null;
+
+      const savedSong = await this.songRepository.save(song);
+      console.log('Song saved to database:', savedSong.name);
+      return savedSong;
+
+    } catch (error) {
+      console.error('Error uploading to Cloudinary:', error);
+      throw new BadRequestException('Failed to upload audio file');
     }
+  }
 
-    // Generate safe filename and paths
-    const uploadDir = path.join(process.cwd(), 'uploads', 'songs');
-
-    const filenaming: string = this.filtername(file.filename);
-    const safeFileName = filenaming;
-    const newFilePath = path.join(uploadDir, safeFileName);
-
-    // Ensure directory exists
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    // 🔥 Extract metadata (especially duration)
-    const metadata = await mm.parseFile(file.path);
-    const duration = metadata.format.duration; // in seconds (float)
-
-    // Save to database
-    const song = new Song();
-    song.name = file.originalname;  // Remove extension
-    song.artist = 'Unknown Artist';
-    song.filePath = file.path;
-    song.audioURL = this.generateURL(filenaming);
-    song.duration = this.formatDuration(duration)
-
-    // Set default cover image (if needed)
-    const serverUrl = this.configService.get<string>('SERVER_URL');
-    const defaultCoverPath = path.join(process.cwd(), 'uploads/cover.jpg');
-    song.coverImgURL = fs.existsSync(defaultCoverPath) ? `${serverUrl}/uploads/cover.jpg` : null;
-
-    await this.songRepository.save(song);
-    return song;
+  // ✅ Helper to remove file extension
+  removeFileExtension(filename: string): string {
+    return filename.replace(/\.[^/.]+$/, '');
   }
 
   formatDuration(seconds: number): string {
@@ -65,33 +60,10 @@ export class SongsService {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  generateURL(fileName: string): string {
-    const serverUrl = this.configService.get<string>('SERVER_URL');
-    const baseUrl = 'http://localhost:3000';
-    // const safeFileName = encodeURIComponent(fileName.trim());
-    return `${serverUrl}/uploads/songs/${fileName}`;
-  }
-
-  filtername(name: string): string {
-    let result = '';  // Initialize an empty string to build the result
-    for (let i = 0; i < name.length; i++) {
-      if (name[i] === ' ') {
-        result += '%20';  // Replace space with hyphen
-      } else {
-        result += name[i];  // Keep original character
-      }
-    }
-    return result;  // Return the modified string
-  }
-
-  renameToMp3(filePath: string): string {
-    const dir = path.dirname(filePath);
-    const baseName = path.basename(filePath, path.extname(filePath));
-    const newFilePath = path.join(dir, `${baseName}.mp3`);
-
-    fs.renameSync(filePath, newFilePath);
-    return newFilePath;
-  }
+  // ❌ Remove these methods - no longer needed
+  // generateURL(fileName: string): string { ... }
+  // filtername(name: string): string { ... }
+  // renameToMp3(filePath: string): string { ... }
 
   findAll() {
     return this.songRepository.find({ relations: ['playlists', 'user'] });
@@ -101,16 +73,16 @@ export class SongsService {
     return this.songRepository.find({ where: { user: { id: Uid } }, relations: ['playlists', 'user'] });
   }
 
-  findById(id: number) {
-    const song = this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] });
+  async findById(id: number) {
+    const song = await this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] });
     if (!song) {
       throw new BadRequestException('Song not found');
     }
     return song;
   }
 
-  findByName(name: string) {
-    const song = this.songRepository.findOne({ where: { name }, relations: ['playlists', 'user'] });
+  async findByName(name: string) {
+    const song = await this.songRepository.findOne({ where: { name }, relations: ['playlists', 'user'] });
     if (!song) {
       throw new BadRequestException('Song not found');
     }
@@ -118,14 +90,12 @@ export class SongsService {
   }
 
   async update(id: number, updateSongDto: UpdateSongDto) {
-    // 1. Find the song (with await)
-    const song = await this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] },);
+    const song = await this.songRepository.findOne({ where: { id }, relations: ['playlists', 'user'] });
 
     if (!song) {
       throw new NotFoundException(`Song with ID ${id} not found`);
     }
 
-    // 2. Update only provided fields
     if (updateSongDto.name !== undefined) {
       song.name = updateSongDto.name;
     }
@@ -134,10 +104,7 @@ export class SongsService {
       song.artist = updateSongDto.artist;
     }
 
-    const currentTime = new Date();
-    song.updatedAt = currentTime
-
-    // 3. Save changes to database
+    song.updatedAt = new Date();
     return await this.songRepository.save(song);
   }
 
@@ -148,41 +115,22 @@ export class SongsService {
       throw new Error('Song not found');
     }
 
-    // Delete the audio file if it exists
-    if (song.filePath) {
-      // Convert the stored path to absolute path from project root
-      const absoluteFilePath = path.resolve(song.filePath);
-
+    // ✅ Delete from Cloudinary
+    if (song.cloudinary_public_id) {
       try {
-        if (fs.existsSync(absoluteFilePath)) {
-          await fs.promises.unlink(absoluteFilePath);
-          console.log(`Successfully deleted audio file: ${absoluteFilePath}`);
-        } else {
-          console.warn(`Audio file not found: ${absoluteFilePath}`);
-        }
+        await this.cloudinaryService.deleteAudio(song.cloudinary_public_id);
+        console.log(`Successfully deleted from Cloudinary: ${song.cloudinary_public_id}`);
       } catch (err) {
-        console.error(`Error deleting audio file: ${absoluteFilePath}`, err);
-        // Don't throw here - we still want to delete the database record
-      }
-    } else if (song.audioURL) {
-      // Fallback: construct path from audioURL if filePath is not available
-      const filename = path.basename(song.audioURL);
-      const filePath = path.join('uploads', 'songs', filename);
-      const absoluteFilePath = path.resolve(filePath);
-
-      try {
-        if (fs.existsSync(absoluteFilePath)) {
-          await fs.promises.unlink(absoluteFilePath);
-          console.log(`Successfully deleted audio file: ${absoluteFilePath}`);
-        } else {
-          console.warn(`Audio file not found: ${absoluteFilePath}`);
-        }
-      } catch (err) {
-        console.error(`Error deleting audio file: ${absoluteFilePath}`, err);
+        console.error(`Error deleting from Cloudinary:`, err);
+        // Continue with database deletion even if Cloudinary fails
       }
     }
 
-    // Remove the song from database
+    // ❌ Remove all local file deletion logic - no more local files
+    // if (song.filePath) { ... }
+
+    // ✅ Remove from database
     await this.songRepository.remove(song);
+    console.log(`Song deleted: ${song.name}`);
   }
 }

@@ -2,7 +2,6 @@ import { Song } from 'src/songs/entities/song.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, ManyToMany, JoinTable, ManyToOne, JoinColumn } from 'typeorm';
 
-
 @Entity('playlists')
 export class Playlist {
   
@@ -15,14 +14,29 @@ export class Playlist {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({nullable : true})
-  updatedAt : Date;
+  @Column({ nullable: true })
+  updatedAt: Date;
 
-  @ManyToMany(() => Song, (song) => song.playlists ,{onDelete: 'CASCADE'})
-  @JoinTable() // This decorator is required on one side of the many-to-many relationship
-  songs: Song[] ;
+  @ManyToMany(() => Song, (song) => song.playlists, {
+    cascade: true, // This enables cascade operations from playlist side
+    onUpdate: 'CASCADE',
+  })
+  @JoinTable({
+    name: 'playlist_songs', // Custom junction table name
+    joinColumn: {
+      name: 'playlist_id',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'song_id',
+      referencedColumnName: 'id',
+    },
+  })
+  songs: Song[];
 
-  @ManyToOne(() => User, (user) => user.playlists)
+  @ManyToOne(() => User, (user) => user.playlists, {
+    onDelete: 'CASCADE' // When user is deleted, playlist is deleted
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 }

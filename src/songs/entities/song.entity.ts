@@ -1,8 +1,8 @@
 import { Playlist } from 'src/playlists/entities/playlist.entity';
-import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 
-@Entity('songs') // Optional, you can specify the table name here
+@Entity('songs')
 export class Song {
   @PrimaryGeneratedColumn()
   id: number;
@@ -10,8 +10,11 @@ export class Song {
   @Column()
   name: string;
 
+  @Column()
+  audioURL: string; // ✅ This will be Cloudinary URL
+
   @Column({ nullable: true })
-  audioURL: string;
+  cloudinary_public_id: string; // ✅ Add this for Cloudinary deletion
 
   @Column({ nullable: true })
   artist: string;
@@ -19,22 +22,25 @@ export class Song {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({nullable : true})
-  updatedAt : Date;
+  @UpdateDateColumn() // ✅ Change to UpdateDateColumn for automatic updates
+  updatedAt: Date;
 
   @Column({ nullable: true })
   coverImgURL: string;
 
-  @Column()
-  filePath: string; // Path to the stored file
+  // ❌ Remove filePath - no more local files
+  // @Column()
+  // filePath: string;
 
-  @Column({nullable:true})
+  @Column({ nullable: true })
   duration: string;
 
-  @ManyToMany(() => Playlist, (playlist) => playlist.songs,{onDelete: 'CASCADE'})
+  @ManyToMany(() => Playlist, (playlist) => playlist.songs)
   playlists: Playlist[];
   
-  @ManyToOne(() => User, (user) => user.songs)
+  @ManyToOne(() => User, (user) => user.songs, {
+    onDelete: 'CASCADE'
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 }
