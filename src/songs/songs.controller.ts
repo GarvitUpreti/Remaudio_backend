@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFile, BadRequestException, HttpCode, HttpStatus } from '@nestjs/common';
 import { SongsService } from './songs.service';
 import { UpdateSongDto } from './dto/update-song.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -10,39 +10,24 @@ export class SongsController {
 
   @Public()
   @Post('upload')
-  @UseInterceptors(FileInterceptor('audio', {
-    // ❌ Remove diskStorage - use memory storage for Cloudinary
-    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
-    fileFilter: (req, file, cb) => {
-      const allowedPatterns = [
-        /^audio\/.*/,  // Any audio type
-        /^video\/.*/   // Any video type (may contain audio)
-      ];
-      const allowedTypes = [
-        'audio/mpeg',
-        'audio/x-mpeg',
-        'audio/mp3',
-        'audio/wav',
-        'audio/x-wav',
-        'audio/ogg',
-        'audio/aac',
-        'audio/x-m4a',
-        'audio/webm',
-        'audio/flac'
-      ];
-      const isAllowed = allowedPatterns.some(pattern => pattern.test(file.mimetype)) || allowedTypes.includes(file.mimetype);
-      if (isAllowed) {
-        cb(null, true);
-      } else {
-        cb(new BadRequestException('Invalid audio file type'), false);
-      }
-    }
-  }))
+  @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      limits: { 
+        fileSize: 100 * 1024 * 1024, // 100MB
+      },
+    }),
+  )
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file uploaded');
-    console.log('Uploading file:', file.originalname);
-    return this.songsService.create(file);
+    // ✅ Only basic null check - service handles everything else
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    // ✅ Delegate everything to service
+    return await this.songsService.create(file);
   }
+
 
   @Get('user/:Uid')
   @Public()
