@@ -27,48 +27,85 @@ export class UserService {
   ) { }
 
   async create(createUserDto: CreateUserDto) {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: createUserDto.email },
+    });
 
-    // const validEmail = await validateEmailFlow(createUserDto.email, this.userRepository);
+    if (existingUser) {
+      throw new BadRequestException('User with this email already exists');
+    }
 
-    const user = new User()
+    const user = new User();
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
-    if(createUserDto.googleId) user.googleId = createUserDto.googleId;
-    if(createUserDto.profilePic) user.profilePic = createUserDto.profilePic;
-    // user.isGoogleUser = createUserDto.isGoogleUser;
+
+    if (createUserDto.googleId) user.googleId = createUserDto.googleId;
+    if (createUserDto.profilePic) user.profilePic = createUserDto.profilePic;
+
     user.name = createUserDto.name;
     user.email = createUserDto.email;
     user.password = hashedPassword;
-    await this.userRepository.save(user);
+    user.playlists = [];
 
-    return user;
+    // ✅ Try to find the song from DB first
+    const defaultSong = await this.songRepository.findOne({ where: { id: 1 } });
+
+    if (defaultSong) {
+      // If song exists in DB, use it directly
+      user.songs = [defaultSong];
+    } else {
+      // Otherwise, inject plain object version
+      user.songs = [
+      {
+        id: 2,
+        name: "Bye Bye Bye (Deadpool 3 Soundtrack)",
+        audioURL: "https://res.cloudinary.com/dxkalcupm/video/upload/v1760184239/remaudio/songs/file_n70wnh.mp3",
+        cloudinary_public_id: "remaudio/songs/file_n70wnh",
+        artist: "Unknown Artist",
+        createdAt: new Date("2025-10-11T06:34:12.579Z"),
+        updatedAt: new Date("2025-10-11T06:34:12.982Z"),
+        coverImgURL: null,
+        duration: "3:20",
+        playlists: [],
+        user: null, // ✅ avoid circular reference
+      } as any,
+      ];
+      console.warn('⚠️ Default song with id 1 not found in database — using static fallback');
+    }
+
+    // ✅ Save to DB
+    return await this.userRepository.save(user);
   }
-
   async updateRefreshToken(userId: number, refreshToken: string) {
     await this.userRepository.update(userId, { refreshToken });
   }
+
+  // ✅ FIXED: Removed relations
   findAll() {
-    return this.userRepository.find({
-      relations: ['playlists', 'songs']
-    }) // This will load both relations;
+    return this.userRepository.find(); // ✅ No relations loaded
   }
 
+  // ✅ FIXED: Removed relations
   findById(id: number) {
-    return this.userRepository.findOne({ where: { id }, relations: ['playlists', 'songs'] });
+    return this.userRepository.findOne({ where: { id } }); // ✅ No relations
   }
 
+  // ✅ FIXED: Removed relations
   findByName(name: string) {
-    return this.userRepository.findOne({ where: { name }, relations: ['playlists', 'songs'] });
+    return this.userRepository.findOne({ where: { name } }); // ✅ No relations
   }
 
+  // ✅ FIXED: Removed relations - THIS IS THE CRITICAL ONE FOR AUTH!
   findByEmail(email: string) {
-    return this.userRepository.findOne({ where: { email }, relations: ['playlists', 'songs'] });
+    return this.userRepository.findOne({ where: { email } }); // ✅ No relations
   }
 
-
-
-
+  // ✅ KEPT: This NEEDS relations because you're updating songs/playlists
   async update(id: number, updateUserDto: UpdateUserDto) {
-    const user = await this.userRepository.findOne({ where: { id }, relations: ['playlists', 'playlists.songs', 'songs', 'songs.playlists'] });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['playlists', 'playlists.songs', 'songs', 'songs.playlists'] // ✅ Keep - needed for update logic
+    });
+
     if (!user) {
       throw new BadRequestException(`user with ${id} not found`);
     }
@@ -146,26 +183,27 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
+  // ✅ KEPT: These NEED relations because they're specifically fetching songs/playlists
   async getUserSongs(userId: number): Promise<Song[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['songs'], // Load related songs
+      relations: ['songs'], // ✅ Keep - this endpoint is specifically for getting songs
     });
 
     if (!user) throw new NotFoundException('User not found');
 
-    return user.songs; // Return the songs related to the user
+    return user.songs;
   }
 
   async getUserPlaylists(userId: number): Promise<Playlist[]> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['playlists'], // Load related songs
+      relations: ['playlists'], // ✅ Keep - this endpoint is specifically for getting playlists
     });
 
     if (!user) throw new NotFoundException('User not found');
 
-    return user.playlists; // Return the songs related to the user
+    return user.playlists;
   }
 
   async remove(id: number) {

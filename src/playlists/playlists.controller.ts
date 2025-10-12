@@ -20,8 +20,8 @@ export class PlaylistsController {
     return this.playlistsService.findAll();
   }
 
-  @Get('user/:Uid')
   @Public()
+  @Get('user/:Uid')
   findByUserID(@Param('Uid') Uid: string) {
     return this.playlistsService.findByUserID(+Uid);
   }

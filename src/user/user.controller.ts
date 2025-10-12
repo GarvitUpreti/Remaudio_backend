@@ -20,6 +20,7 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @Public()
   @Get(':id/songs')
   async getUserSongs(@Param('id', ParseIntPipe) id: number) {
     return this.userService.getUserSongs(id);

@@ -41,6 +41,7 @@ export class Song {
   @ManyToOne(() => User, (user) => user.songs, {
     onDelete: 'CASCADE'
   })
+  
   @JoinColumn({ name: 'user_id' })
   user: User;
 }
